@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aula · Agenti AI in pratica</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --ink:#22252a; --ink-soft:#5b6069; --paper:#f7f4ee; --card:#ffffff;
+    --accent:#c2502d; --accent-soft:#fbe9e1; --line:#e4ded3;
+    --ok:#2e7d4f; --ok-soft:#e2f2e8; --sel:#8a5a00; --sel-soft:#fdf1d6;
+    --run:#1d4ed8; --run-soft:#e3ebfd; --done:#5b21b6; --done-soft:#ede9fe;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:Georgia,'Times New Roman',serif; background:var(--paper); color:var(--ink); min-height:100vh;}
+  input,textarea,select,button{font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
+  .sans{font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
+
+  header{background:var(--ink); color:#f5f1e8; padding:14px 22px; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;}
+  header h1{font-size:1.15rem; font-weight:normal; letter-spacing:.02em;}
+  header .sub{font-size:.8rem; color:#b8b2a4; font-family:-apple-system,'Segoe UI',sans-serif;}
+  header .who{margin-left:auto; font-size:.85rem; font-family:-apple-system,'Segoe UI',sans-serif; color:#e8e2d4;}
+  header .who a{color:#e8a380; cursor:pointer; text-decoration:underline;}
+
+  main{max-width:980px; margin:0 auto; padding:26px 18px 90px;}
+
+  /* join */
+  .join{max-width:520px; margin:60px auto; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:34px;}
+  .join h2{font-size:1.5rem; margin-bottom:8px;}
+  .join p{color:var(--ink-soft); margin-bottom:20px; line-height:1.5;}
+
+  /* tabs */
+  .tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:22px;}
+  .tab{border:1px solid var(--line); background:var(--card); border-radius:999px; padding:9px 16px; font-size:.88rem; cursor:pointer; color:var(--ink-soft);}
+  .tab.active{background:var(--ink); color:#f5f1e8; border-color:var(--ink);}
+  .tab .n{display:inline-block; background:var(--accent-soft); color:var(--accent); border-radius:999px; padding:0 7px; font-size:.75rem; margin-left:6px;}
+  .tab.active .n{background:#3a3e45; color:#f0c9b5;}
+
+  .intro{background:var(--accent-soft); border-left:4px solid var(--accent); padding:12px 16px; border-radius:0 8px 8px 0; margin-bottom:20px; font-size:.95rem; line-height:1.55; color:#5a3325;}
+
+  .panel{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:26px;}
+  .panel h2{font-size:1.3rem; margin-bottom:4px;}
+  .panel .hint{color:var(--ink-soft); font-size:.9rem; margin-bottom:20px; line-height:1.5;}
+
+  label{display:block; font-size:.82rem; font-weight:600; margin:16px 0 5px; font-family:-apple-system,'Segoe UI',sans-serif; color:#3a3e45; text-transform:uppercase; letter-spacing:.04em;}
+  label small{display:block; font-weight:normal; text-transform:none; letter-spacing:0; color:var(--ink-soft); margin-top:2px; font-size:.8rem;}
+  input[type=text],textarea,select{width:100%; border:1px solid var(--line); border-radius:7px; padding:10px 12px; font-size:.95rem; background:#fffdf9; color:var(--ink);}
+  textarea{min-height:74px; resize:vertical; line-height:1.45;}
+  input:focus,textarea:focus,select:focus{outline:2px solid #e6b39e; border-color:var(--accent);}
+
+  .radio-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .radio-row label.opt{display:flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:7px; padding:8px 12px; cursor:pointer; font-size:.87rem; font-weight:normal; text-transform:none; letter-spacing:0; margin:0; background:#fffdf9;}
+  .radio-row label.opt.checked{background:var(--accent-soft); border-color:var(--accent); color:#7c3316;}
+  .radio-row input{accent-color:var(--accent);}
+
+  .btn{border:none; border-radius:8px; padding:12px 22px; font-size:.95rem; cursor:pointer; background:var(--accent); color:#fff;}
+  .btn:hover{filter:brightness(1.07);}
+  .btn.ghost{background:transparent; color:var(--ink-soft); border:1px solid var(--line);}
+  .btn.small{padding:6px 12px; font-size:.8rem;}
+  .actions{margin-top:26px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .msg{font-size:.88rem; color:var(--ok);}
+
+  /* passi del canvas */
+  .passo{display:flex; gap:8px; margin-bottom:8px; align-items:flex-start;}
+  .passo .num{font-family:-apple-system,sans-serif; font-size:.8rem; color:var(--ink-soft); padding-top:12px; width:20px; text-align:right;}
+  .passo input{flex:2;}
+  .passo select{flex:1; max-width:230px;}
+  .passo button{background:none; border:none; color:#b3b3b3; font-size:1.1rem; cursor:pointer; padding-top:8px;}
+
+  /* bacheca */
+  .board-head{display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;}
+  .chip{border:1px solid var(--line); background:var(--card); border-radius:999px; padding:6px 13px; font-size:.8rem; cursor:pointer; color:var(--ink-soft); font-family:-apple-system,sans-serif;}
+  .chip.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .cards{display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:14px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; display:flex; flex-direction:column; gap:8px; cursor:pointer; position:relative;}
+  .card:hover{border-color:#c9b99d;}
+  .card .meta{display:flex; align-items:center; gap:8px; font-size:.75rem; color:var(--ink-soft); font-family:-apple-system,sans-serif; flex-wrap:wrap;}
+  .badge{border-radius:5px; padding:2px 8px; font-size:.7rem; font-family:-apple-system,sans-serif; font-weight:600;}
+  .b-griglia{background:#e8f0e4; color:#3d6b34;} .b-brief{background:var(--accent-soft); color:#a03d1d;}
+  .b-app{background:#e3ebfd; color:#1d4ed8;} .b-canvas{background:#f3e8fd; color:#7c3aed;}
+  .s-nuovo{background:#eee; color:#666;} .s-selezionato{background:var(--sel-soft); color:var(--sel);}
+  .s-in_esecuzione{background:var(--run-soft); color:var(--run);} .s-eseguito{background:var(--done-soft); color:var(--done);}
+  .card h3{font-size:1.02rem; line-height:1.3;}
+  .card .autore{font-size:.85rem; color:var(--ink-soft);}
+  .card .estratto{font-size:.85rem; color:var(--ink-soft); line-height:1.45; font-family:-apple-system,sans-serif; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;}
+  .card .foot{display:flex; align-items:center; justify-content:space-between; margin-top:auto; padding-top:6px;}
+  .vote{border:1px solid var(--line); background:#fffdf9; border-radius:999px; padding:5px 13px; cursor:pointer; font-size:.85rem;}
+  .vote.voted{background:var(--accent-soft); border-color:var(--accent); cursor:default;}
+  .nota-doc{background:var(--sel-soft); border-radius:6px; padding:8px 10px; font-size:.83rem; line-height:1.4; color:#6b4a00;}
+
+  /* dettaglio / proiezione */
+  .overlay{position:fixed; inset:0; background:rgba(30,28,24,.55); display:flex; align-items:center; justify-content:center; padding:24px; z-index:50;}
+  .detail{background:var(--card); border-radius:12px; max-width:860px; width:100%; max-height:92vh; overflow:auto; padding:34px 38px;}
+  .detail .meta{display:flex; gap:10px; align-items:center; margin-bottom:14px; flex-wrap:wrap; font-family:-apple-system,sans-serif; font-size:.8rem; color:var(--ink-soft);}
+  .detail h2{font-size:1.6rem; margin-bottom:4px; line-height:1.25;}
+  .detail .autore{color:var(--ink-soft); margin-bottom:18px;}
+  .field{margin-bottom:16px;}
+  .field .k{font-family:-apple-system,sans-serif; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); margin-bottom:3px;}
+  .field .v{font-size:1.05rem; line-height:1.55; white-space:pre-wrap;}
+  .proj .field .v{font-size:1.5rem;}
+  .proj h2{font-size:2.3rem;}
+  .detail .actions{border-top:1px solid var(--line); padding-top:16px; margin-top:10px;}
+
+  ol.flusso{margin:6px 0 0 22px;}
+  ol.flusso li{margin-bottom:8px; font-size:1.02rem; line-height:1.4;}
+  ol.flusso .chi{font-family:-apple-system,sans-serif; font-size:.72rem; padding:2px 7px; border-radius:5px; margin-left:8px; vertical-align:middle; white-space:nowrap;}
+  .chi-agente{background:var(--ok-soft); color:var(--ok);}
+  .chi-persona{background:#fdeaea; color:#b32424;}
+  .chi-approvazione{background:var(--sel-soft); color:var(--sel);}
+  .proj ol.flusso li{font-size:1.35rem;}
+
+  /* regia */
+  .regia-top{display:flex; gap:14px; margin-bottom:20px; flex-wrap:wrap;}
+  .stat{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 18px; min-width:120px;}
+  .stat .n{font-size:1.7rem; font-family:-apple-system,sans-serif; font-weight:700;}
+  .stat .l{font-size:.75rem; color:var(--ink-soft); font-family:-apple-system,sans-serif; text-transform:uppercase; letter-spacing:.05em;}
+  .regia-controls{display:flex; gap:8px; align-items:center; margin-bottom:16px; flex-wrap:wrap;}
+  .regia-card-actions{display:flex; gap:6px; flex-wrap:wrap; align-items:center;}
+  .live-dot{display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--ok); margin-right:6px; animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#f5f1e8; padding:10px 20px; border-radius:8px; font-family:-apple-system,sans-serif; font-size:.85rem; z-index:99; box-shadow:0 4px 18px rgba(0,0,0,.25);}
+  .hidden{display:none !important;}
+  @media(max-width:640px){ .detail{padding:22px;} main{padding:18px 12px 70px;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Agenti AI in pratica · Aula</h1>
+  <span class="sub">Master AI Agent Survival Kit · 24 Ore Business School</span>
+  <span class="who sans" id="who"></span>
+</header>
+<main id="app"></main>
+<script>
+const SUPABASE_URL = 'https://tsjydmvdonnkpzldqmyl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_fFzXNeWkyEAcwwGTaODYkg_EAB6fPIm';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const ATT = {
+  griglia:{nome:'Griglia di delegabilità', modulo:'Modulo 1', badge:'b-griglia',
+    intro:'Scegli un compito ricorrente del tuo lavoro e passalo al setaccio: le risposte ti dicono se e quanto conviene delegarlo a un agente.'},
+  brief:{nome:'Brief di delega', modulo:'Moduli 2 e 5', badge:'b-brief',
+    intro:'L\'incarico scritto che consegneresti a un agente: obiettivo, materiali, vincoli e criterio di successo. I brief migliori verranno eseguiti dal vivo con Claude Code, Codex o Lovable.'},
+  app:{nome:'La mia app', modulo:'Modulo 3', badge:'b-app',
+    intro:'Descrivi un\'applicazione utile al tuo lavoro seguendo la scaletta: a chi serve, cosa deve fare, quali dati deve ricordare, come si presenta. Il testo esportato è pronto per Lovable.'},
+  canvas:{nome:'Canvas del flusso', modulo:'Modulo 4', badge:'b-canvas',
+    intro:'Prendi un processo del tuo lavoro e spezzalo in passaggi: per ciascuno indica se lo farebbe un agente, una persona, o un agente con approvazione umana.'}
+};
+const STATI = {nuovo:'Nuovo', selezionato:'Selezionato', in_esecuzione:'In esecuzione', eseguito:'Eseguito'};
+
+let contributi = [];
+let vista = 'brief';
+let filtro = 'tutti';
+let ordinamento = 'recenti';
+let dettaglio = null;
+let proiezione = false;
+let isRegia = location.hash.startsWith('#regia');
+let nome = localStorage.getItem('aula_nome') || '';
+let votati = JSON.parse(localStorage.getItem('aula_votati') || '[]');
+let regiaPass = sessionStorage.getItem('aula_regia_pass') || '';
+let regiaOk = sessionStorage.getItem('aula_regia_ok') === '1';
+
+const $ = s => document.querySelector(s);
+const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const quando = ts => new Date(ts).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+
+function toast(t){
+  const el = document.createElement('div'); el.className='toast'; el.textContent=t;
+  document.body.appendChild(el); setTimeout(()=>el.remove(), 2600);
+}
+
+async function carica(){
+  const {data,error} = await sb.from('contributi').select('*').order('created_at',{ascending:false});
+  if(error){ toast('Errore di caricamento: '+error.message); return; }
+  contributi = data || [];
+  render();
+}
+
+sb.channel('aula')
+  .on('postgres_changes',{event:'*',schema:'public',table:'contributi'},payload=>{
+    if(payload.eventType==='INSERT'){ contributi.unshift(payload.new); if(isRegia) toast('Nuovo contributo di '+payload.new.autore); }
+    if(payload.eventType==='UPDATE'){ contributi = contributi.map(c=>c.id===payload.new.id?payload.new:c); if(dettaglio && dettaglio.id===payload.new.id) dettaglio = payload.new; }
+    if(payload.eventType==='DELETE'){ contributi = contributi.filter(c=>c.id!==payload.old.id); if(dettaglio && dettaglio.id===payload.old.id){dettaglio=null; proiezione=false;} }
+    render();
+  }).subscribe();
+
+/* ---------- testo esportabile ---------- */
+function testoContributo(c){
+  const p = c.payload;
+  if(c.attivita==='brief'){
+    return `BRIEF DI DELEGA — ${p.titolo}\n(di ${c.autore})\n\nOBIETTIVO\n${p.obiettivo}\n\nMATERIALI\n${p.materiali}\n\nVINCOLI\n${p.vincoli}\n\nCRITERIO DI SUCCESSO\n${p.criterio}\n\nStrumento previsto: ${p.strumento}\n\nPrima di iniziare rispondi a tre domande: hai tutti i dettagli che ti servono? Hai domande per me? Come intendi procedere? Aspetta il mio ok prima di eseguire.`;
+  }
+  if(c.attivita==='app'){
+    return `DESCRIZIONE APP — ${p.nome}\n(di ${c.autore})\n\nA chi serve: ${p.achiserve}\n\nCosa deve fare: ${p.cosafa}\n\nQuali dati deve ricordare: ${p.dati}\n\nCome si presenta: ${p.aspetto}`;
+  }
+  if(c.attivita==='griglia'){
+    return `GRIGLIA DI DELEGABILITÀ — ${p.compito}\n(di ${c.autore})\n\nDescrivibile per iscritto: ${p.descrivibile}\nRisultato verificabile: ${p.verificabile}\nInformazioni e permessi necessari: ${p.informazioni}\nCosto di un errore: ${p.costo}\nAutonomia concessa: ${p.autonomia}`;
+  }
+  if(c.attivita==='canvas'){
+    const passi = (p.passi||[]).map((x,i)=>`${i+1}. ${x.testo} [${x.chi}]`).join('\n');
+    return `CANVAS DEL FLUSSO — ${p.processo}\n(di ${c.autore})\n\nPassaggi:\n${passi}\n\nNote e punti critici: ${p.note||'—'}`;
+  }
+  return '';
+}
+function copia(t){ navigator.clipboard.writeText(t).then(()=>toast('Copiato negli appunti')); }
+
+/* ---------- render ---------- */
+function render(){
+  $('#who').innerHTML = isRegia
+    ? '<span class="live-dot"></span>Regia'
+    : (nome ? esc(nome)+' · <a id="cambia">cambia</a>' : '');
+  $('#app').innerHTML = isRegia ? viewRegia() : (nome ? viewAula() : viewJoin());
+  bind();
+}
+
+function titoloDi(c){
+  const p=c.payload;
+  return p.titolo || p.nome || p.compito || p.processo || '(senza titolo)';
+}
+
+function viewJoin(){
+  return `<div class="join">
+    <h2>Benvenuto in aula</h2>
+    <p>Qui raccogliamo i contributi delle prove pratiche: quello che scrivi arriva in tempo reale sullo schermo del docente e alcuni contributi verranno commentati o eseguiti dal vivo.</p>
+    <label>Il tuo nome</label>
+    <input type="text" id="nome-input" placeholder="Nome e iniziale del cognome, es. Luca T." maxlength="40">
+    <div class="actions"><button class="btn" id="entra">Entra</button></div>
+  </div>`;
+}
+
+function tabs(){
+  const conta = a => contributi.filter(c=>c.attivita===a).length;
+  let h = '<div class="tabs">';
+  for(const k in ATT) h += `<button class="tab ${vista===k?'active':''}" data-tab="${k}">${ATT[k].nome}</button>`;
+  h += `<button class="tab ${vista==='bacheca'?'active':''}" data-tab="bacheca">Bacheca <span class="n">${contributi.length}</span></button></div>`;
+  return h;
+}
+
+function viewAula(){
+  if(vista==='bacheca') return tabs() + viewBacheca(false);
+  const a = ATT[vista];
+  let form = '';
+  if(vista==='griglia') form = formGriglia();
+  if(vista==='brief') form = formBrief();
+  if(vista==='app') form = formApp();
+  if(vista==='canvas') form = formCanvas();
+  return tabs() + `<div class="intro"><strong>${a.modulo}.</strong> ${a.intro}</div><div class="panel">${form}</div>` + (dettaglio?viewDettaglio():'');
+}
+
+function radio(name, opzioni){
+  return '<div class="radio-row">' + opzioni.map(o=>
+    `<label class="opt"><input type="radio" name="${name}" value="${esc(o)}">${esc(o)}</label>`).join('') + '</div>';
+}
+
+function formGriglia(){ return `
+  <h2>Il compito è delegabile?</h2>
+  <p class="hint">Pensa a un compito ricorrente del tuo lavoro, per esempio il riepilogo settimanale, e rispondi con onestà.</p>
+  <label>Il compito</label>
+  <input type="text" id="g-compito" placeholder="Es. preparare il riepilogo settimanale per il capo">
+  <label>È descrivibile per iscritto?</label>${radio('g-descrivibile',['Sì','In parte','No'])}
+  <label>Il risultato è verificabile?</label>${radio('g-verificabile',['Sì','In parte','No'])}
+  <label>Quali informazioni e permessi servirebbero?<small>Archivi, cartelle, accessi, persone da interpellare.</small></label>
+  <textarea id="g-informazioni"></textarea>
+  <label>Quanto costa un errore?</label>${radio('g-costo',['Poco','Abbastanza','Molto'])}
+  <label>Quanta autonomia gli concederesti?</label>${radio('g-autonomia',['Sola lettura','Preparazione di bozze','Azione su approvazione','Mano libera'])}
+  <div class="actions"><button class="btn" id="invia-griglia">Invia il contributo</button></div>`;
+}
+
+function formBrief(){ return `
+  <h2>Scrivi il tuo brief di delega</h2>
+  <p class="hint">La scaletta è quella vista nel secondo blocco. Scrivi come se stessi consegnando il lavoro a un collaboratore capace ma che non sa nulla del tuo contesto.</p>
+  <label>Titolo del compito</label>
+  <input type="text" id="b-titolo" placeholder="Es. riordinare l'archivio preventivi e produrre un report">
+  <label>Obiettivo<small>Cosa deve esistere alla fine che ora non esiste. Una frase precisa.</small></label>
+  <textarea id="b-obiettivo"></textarea>
+  <label>Materiali<small>File, cartelle, documenti, accessi che consegni all'agente.</small></label>
+  <textarea id="b-materiali"></textarea>
+  <label>Vincoli<small>Cosa non deve toccare, limiti di tempo o formato, regole aziendali.</small></label>
+  <textarea id="b-vincoli"></textarea>
+  <label>Criterio di successo<small>Come farai a dire "il lavoro è fatto bene" senza rileggere tutto.</small></label>
+  <textarea id="b-criterio"></textarea>
+  <label>Strumento previsto</label>${radio('b-strumento',['Claude Code','Codex','Lovable','Non so ancora'])}
+  <div class="actions">
+    <button class="btn" id="invia-brief">Invia il brief</button>
+    <button class="btn ghost" id="copia-brief">Copia come testo da incollare</button>
+  </div>`;
+}
+
+function formApp(){ return `
+  <h2>Descrivi la tua applicazione</h2>
+  <p class="hint">Segui la scaletta del Modulo 3. Il testo che ne esce si incolla direttamente in Lovable sul piano gratuito.</p>
+  <label>Nome dell'app</label>
+  <input type="text" id="a-nome" placeholder="Es. registro visite clienti">
+  <label>A chi serve</label>
+  <textarea id="a-achiserve" placeholder="Chi la userà davvero, e in quale momento della giornata"></textarea>
+  <label>Cosa deve fare</label>
+  <textarea id="a-cosafa" placeholder="Le due o tre cose essenziali, non tutte quelle possibili"></textarea>
+  <label>Quali dati deve ricordare</label>
+  <textarea id="a-dati" placeholder="Cosa resta salvato tra un utilizzo e l'altro"></textarea>
+  <label>Come si presenta</label>
+  <textarea id="a-aspetto" placeholder="Poche pagine? Una lista? Un modulo? Colori sobri o vivaci?"></textarea>
+  <div class="actions">
+    <button class="btn" id="invia-app">Invia la descrizione</button>
+    <button class="btn ghost" id="copia-app">Copia come testo per Lovable</button>
+  </div>`;
+}
+
+function formCanvas(){ return `
+  <h2>Il canvas del flusso</h2>
+  <p class="hint">Elenca i passaggi del processo nell'ordine in cui avvengono. Per ciascuno decidi chi lo farebbe: un agente da solo, un agente che si ferma ad aspettare l'approvazione, o una persona.</p>
+  <label>Il processo</label>
+  <input type="text" id="c-processo" placeholder="Es. rassegna stampa del lunedì mattina">
+  <label>I passaggi</label>
+  <div id="passi"></div>
+  <button class="btn ghost small" id="agg-passo">+ aggiungi passaggio</button>
+  <label>Note e punti critici<small>Dove il flusso può rompersi, cosa non lasceresti mai a mano libera.</small></label>
+  <textarea id="c-note"></textarea>
+  <div class="actions"><button class="btn" id="invia-canvas">Invia il canvas</button></div>`;
+}
+
+let passiTemp = [{testo:'',chi:'agente'},{testo:'',chi:'agente'},{testo:'',chi:'persona'}];
+function renderPassi(){
+  $('#passi').innerHTML = passiTemp.map((p,i)=>`
+    <div class="passo">
+      <span class="num">${i+1}.</span>
+      <input type="text" data-passo="${i}" value="${esc(p.testo)}" placeholder="Cosa succede in questo passaggio">
+      <select data-chi="${i}">
+        <option value="agente" ${p.chi==='agente'?'selected':''}>Agente</option>
+        <option value="agente con approvazione" ${p.chi==='agente con approvazione'?'selected':''}>Agente + approvazione</option>
+        <option value="persona" ${p.chi==='persona'?'selected':''}>Persona</option>
+      </select>
+      <button data-del="${i}" title="rimuovi">×</button>
+    </div>`).join('');
+  document.querySelectorAll('[data-passo]').forEach(el=>el.oninput=e=>{passiTemp[+el.dataset.passo].testo=el.value;});
+  document.querySelectorAll('[data-chi]').forEach(el=>el.onchange=e=>{passiTemp[+el.dataset.chi].chi=el.value;});
+  document.querySelectorAll('[data-del]').forEach(el=>el.onclick=e=>{passiTemp.splice(+el.dataset.del,1); renderPassi();});
+}
+
+/* ---------- bacheca ---------- */
+function viewBacheca(regia){
+  const chips = ['tutti',...Object.keys(ATT)].map(k=>
+    `<button class="chip ${filtro===k?'active':''}" data-filtro="${k}">${k==='tutti'?'Tutti':ATT[k].nome}</button>`).join('');
+  let lista = contributi.filter(c=>filtro==='tutti'||c.attivita===filtro);
+  if(ordinamento==='voti') lista = [...lista].sort((a,b)=>b.voti-a.voti);
+  const ordina = regia||true ? `<select id="ordina" style="width:auto; margin-left:auto;">
+      <option value="recenti" ${ordinamento==='recenti'?'selected':''}>Più recenti</option>
+      <option value="voti" ${ordinamento==='voti'?'selected':''}>Più votati</option>
+    </select>` : '';
+  const cards = lista.length ? `<div class="cards">${lista.map(c=>cardHtml(c,regia)).join('')}</div>`
+    : '<p style="color:var(--ink-soft)">Ancora nessun contributo qui. Sii il primo.</p>';
+  return `<div class="board-head">${chips}${ordina}</div>` + cards + (dettaglio?viewDettaglio():'');
+}
+
+function cardHtml(c, regia){
+  const a = ATT[c.attivita];
+  const votato = votati.includes(c.id);
+  const regiaBtns = regia ? `<div class="regia-card-actions sans">
+      <select data-stato="${c.id}" style="width:auto; font-size:.78rem; padding:4px 6px;">
+        ${Object.entries(STATI).map(([k,v])=>`<option value="${k}" ${c.stato===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+      <button class="btn ghost small" data-proietta="${c.id}">Proietta</button>
+      <button class="btn ghost small" data-copia="${c.id}">Copia</button>
+      <button class="btn ghost small" data-elimina="${c.id}" style="color:#b32424;">Elimina</button>
+    </div>` : '';
+  return `<div class="card" data-apri="${c.id}">
+    <div class="meta">
+      <span class="badge ${a.badge}">${a.nome}</span>
+      <span class="badge s-${c.stato}">${STATI[c.stato]}</span>
+      <span>${quando(c.created_at)}</span>
+    </div>
+    <h3>${esc(titoloDi(c))}</h3>
+    <div class="autore">di ${esc(c.autore)}</div>
+    <div class="estratto">${esc(estratto(c))}</div>
+    ${c.nota_docente?`<div class="nota-doc">Nota del docente: ${esc(c.nota_docente)}</div>`:''}
+    <div class="foot">
+      <button class="vote ${votato?'voted':''}" data-vota="${c.id}" ${votato?'disabled':''}>👍 ${c.voti}</button>
+      ${regiaBtns}
+    </div>
+  </div>`;
+}
+
+function estratto(c){
+  const p=c.payload;
+  if(c.attivita==='brief') return p.obiettivo;
+  if(c.attivita==='app') return p.cosafa;
+  if(c.attivita==='griglia') return `Autonomia: ${p.autonomia} · Errore: costa ${(p.costo||'').toLowerCase()}`;
+  if(c.attivita==='canvas') return (p.passi||[]).map(x=>x.testo).filter(Boolean).join(' → ');
+  return '';
+}
+
+/* ---------- dettaglio ---------- */
+function campiDettaglio(c){
+  const p=c.payload; const f=(k,v)=>v?`<div class="field"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`:'';
+  if(c.attivita==='brief') return f('Obiettivo',p.obiettivo)+f('Materiali',p.materiali)+f('Vincoli',p.vincoli)+f('Criterio di successo',p.criterio)+f('Strumento previsto',p.strumento);
+  if(c.attivita==='app') return f('A chi serve',p.achiserve)+f('Cosa deve fare',p.cosafa)+f('Quali dati deve ricordare',p.dati)+f('Come si presenta',p.aspetto);
+  if(c.attivita==='griglia') return f('Descrivibile per iscritto',p.descrivibile)+f('Risultato verificabile',p.verificabile)+f('Informazioni e permessi',p.informazioni)+f('Costo di un errore',p.costo)+f('Autonomia concessa',p.autonomia);
+  if(c.attivita==='canvas'){
+    const cls={'agente':'chi-agente','persona':'chi-persona','agente con approvazione':'chi-approvazione'};
+    const passi=(p.passi||[]).filter(x=>x.testo).map(x=>`<li>${esc(x.testo)}<span class="chi ${cls[x.chi]||''}">${esc(x.chi)}</span></li>`).join('');
+    return `<div class="field"><div class="k">Passaggi</div><ol class="flusso">${passi}</ol></div>`+f('Note e punti critici',p.note);
+  }
+  return '';
+}
+
+function viewDettaglio(){
+  const c = dettaglio; const a = ATT[c.attivita];
+  return `<div class="overlay" id="overlay">
+    <div class="detail ${proiezione?'proj':''}">
+      <div class="meta">
+        <span class="badge ${a.badge}">${a.nome}</span>
+        <span class="badge s-${c.stato}">${STATI[c.stato]}</span>
+        <span>${quando(c.created_at)} · 👍 ${c.voti}</span>
+      </div>
+      <h2>${esc(titoloDi(c))}</h2>
+      <div class="autore">di ${esc(c.autore)}</div>
+      ${campiDettaglio(c)}
+      ${c.nota_docente?`<div class="nota-doc" style="margin-bottom:12px;">Nota del docente: ${esc(c.nota_docente)}</div>`:''}
+      <div class="actions">
+        ${isRegia?`
+          <button class="btn ghost" id="d-proietta">${proiezione?'Riduci':'Modo proiezione'}</button>
+          <button class="btn ghost" id="d-nota">Nota del docente</button>
+          <button class="btn ghost" id="d-copia">Copia testo</button>`:''}
+        <button class="btn ghost" id="d-chiudi" style="margin-left:auto;">Chiudi</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------- regia ---------- */
+function viewRegia(){
+  if(!regiaOk){
+    return `<div class="join"><h2>Vista regia</h2><p>Questa vista è riservata al docente: inserisci la passphrase.</p>
+      <input type="text" id="pass-input" placeholder="passphrase">
+      <div class="actions"><button class="btn" id="pass-entra">Entra in regia</button></div></div>`;
+  }
+  const n = a => contributi.filter(c=>c.attivita===a).length;
+  const stats = `<div class="regia-top">
+    <div class="stat"><div class="n">${contributi.length}</div><div class="l">Contributi</div></div>
+    <div class="stat"><div class="n">${n('griglia')}</div><div class="l">Griglie</div></div>
+    <div class="stat"><div class="n">${n('brief')}</div><div class="l">Brief</div></div>
+    <div class="stat"><div class="n">${n('app')}</div><div class="l">App</div></div>
+    <div class="stat"><div class="n">${n('canvas')}</div><div class="l">Canvas</div></div>
+    <div class="stat"><div class="n">${contributi.filter(c=>c.stato==='selezionato').length}</div><div class="l">Selezionati</div></div>
+  </div>`;
+  return stats + viewBacheca(true);
+}
+
+/* ---------- eventi ---------- */
+function bind(){
+  const on=(sel,ev,fn)=>{const el=$(sel); if(el) el[ev]=fn;};
+  on('#cambia','onclick',()=>{nome=''; localStorage.removeItem('aula_nome'); render();});
+  on('#entra','onclick',()=>{
+    const v=$('#nome-input').value.trim();
+    if(v.length<2){toast('Scrivi il tuo nome'); return;}
+    nome=v; localStorage.setItem('aula_nome',v); render();
+  });
+  const ni=$('#nome-input'); if(ni) ni.onkeydown=e=>{if(e.key==='Enter')$('#entra').click();};
+
+  document.querySelectorAll('[data-tab]').forEach(el=>el.onclick=()=>{vista=el.dataset.tab; dettaglio=null; render(); if(vista==='canvas') renderPassi();});
+  document.querySelectorAll('[data-filtro]').forEach(el=>el.onclick=()=>{filtro=el.dataset.filtro; render();});
+  on('#ordina','onchange',()=>{ordinamento=$('#ordina').value; render();});
+
+  document.querySelectorAll('[data-apri]').forEach(el=>el.onclick=e=>{
+    if(e.target.closest('[data-vota],[data-stato],[data-proietta],[data-copia],[data-elimina],select')) return;
+    dettaglio = contributi.find(c=>c.id===el.dataset.apri); proiezione=false; render();
+  });
+  document.querySelectorAll('[data-vota]').forEach(el=>el.onclick=async e=>{
+    e.stopPropagation();
+    const id=el.dataset.vota;
+    if(votati.includes(id)) return;
+    votati.push(id); localStorage.setItem('aula_votati',JSON.stringify(votati));
+    const {error} = await sb.rpc('vota',{p_id:id});
+    if(error) toast('Errore voto: '+error.message);
+  });
+
+  // form: griglia
+  on('#invia-griglia','onclick',()=>invia('griglia',{
+    compito:val('#g-compito'), descrivibile:rad('g-descrivibile'), verificabile:rad('g-verificabile'),
+    informazioni:val('#g-informazioni'), costo:rad('g-costo'), autonomia:rad('g-autonomia')
+  },['compito','descrivibile','verificabile','costo','autonomia']));
+  // form: brief
+  on('#invia-brief','onclick',()=>invia('brief',payloadBrief(),['titolo','obiettivo','materiali','vincoli','criterio','strumento']));
+  on('#copia-brief','onclick',()=>{
+    const p=payloadBrief();
+    if(!p.titolo||!p.obiettivo){toast('Compila almeno titolo e obiettivo'); return;}
+    copia(testoContributo({attivita:'brief',autore:nome,payload:p}));
+  });
+  // form: app
+  on('#invia-app','onclick',()=>invia('app',payloadApp(),['nome','achiserve','cosafa','dati','aspetto']));
+  on('#copia-app','onclick',()=>{
+    const p=payloadApp();
+    if(!p.nome||!p.cosafa){toast('Compila almeno nome e cosa deve fare'); return;}
+    copia(testoContributo({attivita:'app',autore:nome,payload:p}));
+  });
+  // form: canvas
+  on('#agg-passo','onclick',()=>{passiTemp.push({testo:'',chi:'agente'}); renderPassi();});
+  on('#invia-canvas','onclick',()=>{
+    const passi=passiTemp.filter(p=>p.testo.trim());
+    if(!val('#c-processo')||passi.length<2){toast('Serve il nome del processo e almeno due passaggi'); return;}
+    invia('canvas',{processo:val('#c-processo'), passi, note:val('#c-note')},['processo']);
+  });
+  if(vista==='canvas' && $('#passi') && !$('#passi').innerHTML) renderPassi();
+
+  // dettaglio
+  on('#d-chiudi','onclick',()=>{dettaglio=null; proiezione=false; render();});
+  on('#overlay','onclick',e=>{if(e.target.id==='overlay'){dettaglio=null; proiezione=false; render();}});
+  on('#d-proietta','onclick',()=>{proiezione=!proiezione; render();});
+  on('#d-copia','onclick',()=>copia(testoContributo(dettaglio)));
+  on('#d-nota','onclick',async()=>{
+    const nota=prompt('Nota del docente (visibile a tutti):', dettaglio.nota_docente||'');
+    if(nota===null) return;
+    const {error}=await sb.rpc('regia_aggiorna',{p_id:dettaglio.id,p_stato:null,p_nota:nota,p_pass:regiaPass});
+    if(error) toast('Errore: '+error.message);
+  });
+
+  // regia
+  on('#pass-entra','onclick',async()=>{
+    regiaPass=$('#pass-input').value.trim();
+    const {data,error}=await sb.rpc('regia_verifica',{p_pass:regiaPass});
+    regiaOk = !error && data===true;
+    sessionStorage.setItem('aula_regia_pass',regiaPass);
+    sessionStorage.setItem('aula_regia_ok', regiaOk?'1':'0');
+    render();
+    if(!regiaOk) toast('Passphrase errata');
+  });
+  const pi=$('#pass-input'); if(pi) pi.onkeydown=e=>{if(e.key==='Enter')$('#pass-entra').click();};
+
+  document.querySelectorAll('[data-stato]').forEach(el=>el.onchange=async()=>{
+    const {error}=await sb.rpc('regia_aggiorna',{p_id:el.dataset.stato,p_stato:el.value,p_nota:null,p_pass:regiaPass});
+    if(error) toast('Errore: '+error.message);
+  });
+  document.querySelectorAll('[data-proietta]').forEach(el=>el.onclick=e=>{
+    e.stopPropagation();
+    dettaglio=contributi.find(c=>c.id===el.dataset.proietta); proiezione=true; render();
+  });
+  document.querySelectorAll('[data-copia]').forEach(el=>el.onclick=e=>{
+    e.stopPropagation();
+    copia(testoContributo(contributi.find(c=>c.id===el.dataset.copia)));
+  });
+  document.querySelectorAll('[data-elimina]').forEach(el=>el.onclick=async e=>{
+    e.stopPropagation();
+    if(!confirm('Eliminare questo contributo?')) return;
+    const {error}=await sb.rpc('regia_elimina',{p_id:el.dataset.elimina,p_pass:regiaPass});
+    if(error) toast('Errore: '+error.message);
+  });
+}
+
+const val = s => ($(s)?$(s).value.trim():'');
+const rad = n => {const el=document.querySelector(`input[name="${n}"]:checked`); return el?el.value:'';};
+function payloadBrief(){ return {titolo:val('#b-titolo'), obiettivo:val('#b-obiettivo'), materiali:val('#b-materiali'), vincoli:val('#b-vincoli'), criterio:val('#b-criterio'), strumento:rad('b-strumento')}; }
+function payloadApp(){ return {nome:val('#a-nome'), achiserve:val('#a-achiserve'), cosafa:val('#a-cosafa'), dati:val('#a-dati'), aspetto:val('#a-aspetto')}; }
+
+async function invia(attivita, payload, obbligatori){
+  for(const k of obbligatori){
+    if(!payload[k]){ toast('Compila tutti i campi prima di inviare'); return; }
+  }
+  const {error} = await sb.from('contributi').insert({autore:nome, attivita, payload});
+  if(error){ toast('Errore di invio: '+error.message); return; }
+  toast('Contributo inviato: lo trovi in bacheca');
+  if(attivita==='canvas') passiTemp=[{testo:'',chi:'agente'},{testo:'',chi:'agente'},{testo:'',chi:'persona'}];
+  vista='bacheca'; filtro=attivita; render();
+}
+
+/* radio visual feedback */
+document.addEventListener('change',e=>{
+  if(e.target.matches('.radio-row input')){
+    e.target.closest('.radio-row').querySelectorAll('label.opt').forEach(l=>l.classList.toggle('checked', l.querySelector('input').checked));
+  }
+});
+window.addEventListener('hashchange',()=>{isRegia=location.hash.startsWith('#regia'); dettaglio=null; render();});
+
+carica();
+</script>
+</body>
+</html>
