@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aula · Agenti AI in pratica</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js"></script>
 <style>
   :root{
     --ink:#22252a; --ink-soft:#5b6069; --paper:#f7f4ee; --card:#ffffff;
@@ -225,7 +225,7 @@ async function carica(){
   const {data,error} = await sb.from('contributi').select('*').order('created_at',{ascending:false});
   if(error){ toast('Errore di caricamento: '+error.message); return; }
   contributi = data || [];
-  render();
+  aggiorna();
 }
 
 sb.channel('aula')
@@ -238,6 +238,7 @@ sb.channel('aula')
 
 /* aggiorna solo riepiloghi e contatori, senza cancellare quello che si sta scrivendo */
 function aggiorna(){
+  if(!isRegia && !nome) return;
   if(!isRegia && nome && vista!=='bacheca' && !dettaglio){
     const s=$('#sotto');
     if(s){ s.innerHTML = vista==='chisiete' ? riepilogoChiSiete() : vista==='esito' ? riepilogoEsiti(provaSel) : ''; bindRiepilogo(); }
@@ -752,6 +753,7 @@ document.addEventListener('change',e=>{
 });
 window.addEventListener('hashchange',()=>{isRegia=location.hash.startsWith('#regia'); dettaglio=null; render();});
 
+render();
 carica();
 </script>
 </body>
