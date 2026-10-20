@@ -121,13 +121,45 @@
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
   .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#f5f1e8; padding:10px 20px; border-radius:8px; font-family:-apple-system,sans-serif; font-size:.85rem; z-index:99; box-shadow:0 4px 18px rgba(0,0,0,.25);}
   .hidden{display:none !important;}
+
+  /* checkbox */
+  .check-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .check-row label.opt{display:flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:7px; padding:8px 12px; cursor:pointer; font-size:.87rem; font-weight:normal; text-transform:none; letter-spacing:0; margin:0; background:#fffdf9;}
+  .check-row label.opt.checked{background:var(--accent-soft); border-color:var(--accent); color:#7c3316;}
+  .check-row input{accent-color:var(--accent);}
+
+  /* riepiloghi */
+  .riepilogo{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:24px 26px; margin-top:20px;}
+  .riepilogo h2{font-size:1.3rem; margin-bottom:4px;}
+  .riepilogo .hint{color:var(--ink-soft); font-size:.88rem; margin-bottom:16px;}
+  .riepilogo h3{font-size:1rem; margin:18px 0 8px; font-family:-apple-system,'Segoe UI',sans-serif; text-transform:uppercase; letter-spacing:.05em; color:var(--accent); font-size:.78rem;}
+  .bar{display:grid; grid-template-columns:minmax(150px,1.3fr) 2fr 34px; gap:10px; align-items:center; margin-bottom:6px; font-family:-apple-system,'Segoe UI',sans-serif; font-size:.88rem;}
+  .bar .track{background:#f1ece3; border-radius:5px; height:16px; overflow:hidden;}
+  .bar .fill{background:var(--accent); height:100%; border-radius:5px;}
+  .bar .num{text-align:right; font-weight:700; font-variant-numeric:tabular-nums;}
+  .frasi{list-style:none; display:grid; gap:6px;}
+  .frasi li{background:#fffdf9; border:1px solid var(--line); border-radius:7px; padding:8px 12px; font-size:.92rem; line-height:1.4;}
+  .incrocio{border-collapse:collapse; font-family:-apple-system,'Segoe UI',sans-serif; font-size:.82rem; margin-top:6px; width:100%;}
+  .incrocio th,.incrocio td{border:1px solid var(--line); padding:5px 8px; text-align:center;}
+  .incrocio th:first-child,.incrocio td:first-child{text-align:left;}
+  .incrocio th{background:#f7f2ea; font-weight:600;}
+  .tabwrap{overflow-x:auto;}
+  .grazie{background:var(--ok-soft); color:var(--ok); border-radius:8px; padding:12px 16px; font-family:-apple-system,sans-serif; font-size:.9rem; margin-bottom:6px;}
+  body.big .riepilogo{font-size:1.25rem;}
+  body.big .bar{font-size:1.15rem; grid-template-columns:minmax(220px,1.3fr) 2fr 48px;}
+  body.big .bar .track{height:24px;}
+  body.big .frasi li{font-size:1.2rem;}
+  body.big .riepilogo h2{font-size:1.8rem;}
+  body.big .incrocio{font-size:1.05rem;}
+  body.big main{max-width:1200px;}
+  @media(max-width:640px){ .bar{grid-template-columns:1fr 1fr 30px;} }
   @media(max-width:640px){ .detail{padding:22px;} main{padding:18px 12px 70px;} }
 </style>
 </head>
 <body>
 <header>
   <h1>Agenti AI in pratica · Aula</h1>
-  <span class="sub">Master AI Agent Survival Kit · 24 Ore Business School</span>
+  <span class="sub">24 ORE Business School</span>
   <span class="who sans" id="who"></span>
 </header>
 <main id="app"></main>
@@ -137,19 +169,39 @@ const SUPABASE_KEY = 'sb_publishable_fFzXNeWkyEAcwwGTaODYkg_EAB6fPIm';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const ATT = {
-  griglia:{nome:'Griglia di delegabilità', modulo:'Modulo 1', badge:'b-griglia',
+  chisiete:{nome:'Chi siete', modulo:'Per cominciare', badge:'b-griglia',
+    intro:'Quattro domande veloci per capire chi c\'è in aula e che cosa vi aspettate. I risultati compaiono qui sotto, in forma anonima, e li commentiamo insieme.'},
+  esito:{nome:'Com\'è andata la prova', modulo:'Dopo ogni prova', badge:'b-canvas',
+    intro:'Finita una prova, segnate qui lo strumento che avete usato e che cosa ha fatto. Il riepilogo qui sotto è quello che discutiamo insieme.'},
+  app:{nome:'L\'app che vi servirebbe', modulo:'Terzo blocco', badge:'b-app',
+    intro:'Descrivete un\'applicazione utile al vostro lavoro: a chi serve, che cosa deve fare, quali dati deve ricordare e come si presenta. Poi votate le proposte in bacheca: la più votata la guardiamo insieme in Lovable.'},
+  brief:{nome:'Il vostro brief', modulo:'Il vostro caso', badge:'b-brief',
+    intro:'L\'incarico che consegnereste a un agente per un vostro compito vero, raccontato con dati inventati. Se volete condividerlo con l\'aula, inviatelo da qui.'},
+  griglia:{nome:'Griglia di delegabilità', modulo:'Modulo 1', badge:'b-griglia', nascosta:true,
     intro:'Scegli un compito ricorrente del tuo lavoro e passalo al setaccio: le risposte ti dicono se e quanto conviene delegarlo a un agente.'},
-  brief:{nome:'Brief di delega', modulo:'Moduli 2 e 5', badge:'b-brief',
-    intro:'L\'incarico scritto che consegneresti a un agente: obiettivo, materiali, vincoli e criterio di successo. I brief migliori verranno eseguiti dal vivo con Claude Code, Codex o Lovable.'},
-  app:{nome:'La mia app', modulo:'Modulo 3', badge:'b-app',
-    intro:'Descrivi un\'applicazione utile al tuo lavoro seguendo la scaletta: a chi serve, cosa deve fare, quali dati deve ricordare, come si presenta. Il testo esportato è pronto per Lovable.'},
-  canvas:{nome:'Canvas del flusso', modulo:'Modulo 4', badge:'b-canvas',
+  canvas:{nome:'Canvas del flusso', modulo:'Modulo 4', badge:'b-canvas', nascosta:true,
     intro:'Prendi un processo del tuo lavoro e spezzalo in passaggi: per ciascuno indica se lo farebbe un agente, una persona, o un agente con approvazione umana.'}
 };
 const STATI = {nuovo:'Nuovo', selezionato:'Selezionato', in_esecuzione:'In esecuzione', eseguito:'Eseguito'};
+const VISIBILI = Object.keys(ATT).filter(k=>!ATT[k].nascosta);
+const IN_BACHECA = ['app','brief'];
+
+const LIVELLI = ['Li uso poco o niente','Qualche volta al mese','Ogni settimana','Ogni giorno','Ci costruisco automazioni o agenti'];
+const STRUMENTI = ['ChatGPT','Claude','Gemini','Copilot','Perplexity','Le Chat (Mistral)','DeepSeek','Strumenti per sviluppare (Cursor, Codex, Claude Code…)','Automazioni (n8n, Make, Zapier…)','Altro'];
+const STRUMENTI_PROVA = ['ChatGPT','Claude','Gemini','Copilot','Perplexity','Le Chat','Altro'];
+const PROVE = {
+  delegare:{nome:'Prova 1 · Delegare', domanda:'Che cosa ha fatto con la richiesta senza chi approva la spesa?',
+    esiti:['Ha chiesto chi approva e si è fermato','Ha chiesto, ma ha preparato comunque la proposta','Ha inventato chi approva','Ha preparato la proposta senza chiedere niente']},
+  controllare:{nome:'Prova 2 · Controllare', domanda:'Quanti dei tre problemi della Gazzetta ha trovato?',
+    esiti:['Tutti e tre','Due','Uno','Nessuno'], extra:'Ha inventato una fonte, una data o un numero?'},
+  caso:{nome:'Il vostro caso', domanda:'Il risultato sul vostro compito com\'è?',
+    esiti:['Usabile così com\'è','Usabile con qualche correzione','Da rifare','Non ha capito il compito']}
+};
 
 let contributi = [];
-let vista = 'brief';
+let vista = 'chisiete';
+let provaSel = localStorage.getItem('aula_prova') || 'delegare';
+let regiaVista = 'bacheca';
 let filtro = 'tutti';
 let ordinamento = 'recenti';
 let dettaglio = null;
@@ -181,8 +233,22 @@ sb.channel('aula')
     if(payload.eventType==='INSERT'){ contributi.unshift(payload.new); if(isRegia) toast('Nuovo contributo di '+payload.new.autore); }
     if(payload.eventType==='UPDATE'){ contributi = contributi.map(c=>c.id===payload.new.id?payload.new:c); if(dettaglio && dettaglio.id===payload.new.id) dettaglio = payload.new; }
     if(payload.eventType==='DELETE'){ contributi = contributi.filter(c=>c.id!==payload.old.id); if(dettaglio && dettaglio.id===payload.old.id){dettaglio=null; proiezione=false;} }
-    render();
+    aggiorna();
   }).subscribe();
+
+/* aggiorna solo riepiloghi e contatori, senza cancellare quello che si sta scrivendo */
+function aggiorna(){
+  if(!isRegia && nome && vista!=='bacheca' && !dettaglio){
+    const s=$('#sotto');
+    if(s){ s.innerHTML = vista==='chisiete' ? riepilogoChiSiete() : vista==='esito' ? riepilogoEsiti(provaSel) : ''; bindRiepilogo(); }
+    const n=$('.tab[data-tab="bacheca"] .n'); if(n) n.textContent = contributi.filter(c=>IN_BACHECA.includes(c.attivita)).length;
+    return;
+  }
+  render();
+}
+function bindRiepilogo(){
+  document.querySelectorAll('[data-vedi-prova]').forEach(el=>el.onclick=()=>{provaSel=el.dataset.vediProva; localStorage.setItem('aula_prova',provaSel); render();});
+}
 
 /* ---------- testo esportabile ---------- */
 function testoContributo(c){
@@ -200,6 +266,12 @@ function testoContributo(c){
     const passi = (p.passi||[]).map((x,i)=>`${i+1}. ${x.testo} [${x.chi}]`).join('\n');
     return `CANVAS DEL FLUSSO — ${p.processo}\n(di ${c.autore})\n\nPassaggi:\n${passi}\n\nNote e punti critici: ${p.note||'—'}`;
   }
+  if(c.attivita==='chisiete'){
+    return `CHI SIETE — ${c.autore}\nLivello: ${p.livello}\nStrumenti: ${(p.strumenti||[]).join(', ')}\nPer che cosa: ${p.usi||'—'}\nDa portare a casa: ${p.obiettivo||'—'}`;
+  }
+  if(c.attivita==='esito'){
+    return `ESITO — ${(PROVE[p.prova]||{}).nome||p.prova}\n(di ${c.autore})\nStrumento: ${p.strumento}\nEsito: ${p.esito}${p.extra?'\nHa inventato qualcosa: '+p.extra:''}\nNota: ${p.nota||'—'}`;
+  }
   return '';
 }
 function copia(t){ navigator.clipboard.writeText(t).then(()=>toast('Copiato negli appunti')); }
@@ -215,13 +287,15 @@ function render(){
 
 function titoloDi(c){
   const p=c.payload;
+  if(c.attivita==='chisiete') return p.livello || 'Chi siete';
+  if(c.attivita==='esito') return ((PROVE[p.prova]||{}).nome||'Prova')+' · '+(p.strumento||'');
   return p.titolo || p.nome || p.compito || p.processo || '(senza titolo)';
 }
 
 function viewJoin(){
   return `<div class="join">
     <h2>Benvenuto in aula</h2>
-    <p>Qui raccogliamo i contributi delle prove pratiche: quello che scrivi arriva in tempo reale sullo schermo del docente e alcuni contributi verranno commentati o eseguiti dal vivo.</p>
+    <p>Qui raccogliamo le vostre risposte e gli esiti delle prove: quello che scrivete arriva in tempo reale sullo schermo del docente e lo discutiamo insieme. Usate dati inventati, mai informazioni riservate.</p>
     <label>Il tuo nome</label>
     <input type="text" id="nome-input" placeholder="Nome e iniziale del cognome, es. Luca T." maxlength="40">
     <div class="actions"><button class="btn" id="entra">Entra</button></div>
@@ -229,27 +303,110 @@ function viewJoin(){
 }
 
 function tabs(){
-  const conta = a => contributi.filter(c=>c.attivita===a).length;
+  const nb = contributi.filter(c=>IN_BACHECA.includes(c.attivita)).length;
   let h = '<div class="tabs">';
-  for(const k in ATT) h += `<button class="tab ${vista===k?'active':''}" data-tab="${k}">${ATT[k].nome}</button>`;
-  h += `<button class="tab ${vista==='bacheca'?'active':''}" data-tab="bacheca">Bacheca <span class="n">${contributi.length}</span></button></div>`;
+  for(const k of VISIBILI) h += `<button class="tab ${vista===k?'active':''}" data-tab="${k}">${ATT[k].nome}</button>`;
+  h += `<button class="tab ${vista==='bacheca'?'active':''}" data-tab="bacheca">Bacheca <span class="n">${nb}</span></button>`;
+  h += `<button class="tab" id="ingrandisci" title="Testo più grande per lo schermo condiviso">${document.body.classList.contains('big')?'Testo normale':'Ingrandisci'}</button></div>`;
   return h;
 }
 
 function viewAula(){
   if(vista==='bacheca') return tabs() + viewBacheca(false);
   const a = ATT[vista];
-  let form = '';
+  let form = '', sotto = '';
+  if(vista==='chisiete'){ form = formChiSiete(); sotto = riepilogoChiSiete(); }
+  if(vista==='esito'){ form = formEsito(); sotto = riepilogoEsiti(provaSel); }
   if(vista==='griglia') form = formGriglia();
   if(vista==='brief') form = formBrief();
   if(vista==='app') form = formApp();
   if(vista==='canvas') form = formCanvas();
-  return tabs() + `<div class="intro"><strong>${a.modulo}.</strong> ${a.intro}</div><div class="panel">${form}</div>` + (dettaglio?viewDettaglio():'');
+  return tabs() + `<div class="intro"><strong>${a.modulo}.</strong> ${a.intro}</div><div class="panel">${form}</div><div id="sotto">${sotto}</div>` + (dettaglio?viewDettaglio():'');
 }
 
-function radio(name, opzioni){
+function radio(name, opzioni, sel){
   return '<div class="radio-row">' + opzioni.map(o=>
-    `<label class="opt"><input type="radio" name="${name}" value="${esc(o)}">${esc(o)}</label>`).join('') + '</div>';
+    `<label class="opt ${sel===o?'checked':''}"><input type="radio" name="${name}" value="${esc(o)}" ${sel===o?'checked':''}>${esc(o)}</label>`).join('') + '</div>';
+}
+function checks(name, opzioni){
+  return '<div class="check-row">' + opzioni.map(o=>
+    `<label class="opt"><input type="checkbox" name="${name}" value="${esc(o)}">${esc(o)}</label>`).join('') + '</div>';
+}
+
+/* ---------- chi siete ---------- */
+function formChiSiete(){
+  const fatto = localStorage.getItem('aula_chisiete_fatto')==='1';
+  return `${fatto?'<div class="grazie">Grazie, le tue risposte sono arrivate. Se vuoi, puoi correggerle inviando di nuovo.</div>':''}
+  <h2>Chi siete</h2>
+  <p class="hint">Bastano due minuti. Le risposte compaiono nel riepilogo senza il vostro nome.</p>
+  <label>Quanto usate oggi gli strumenti di intelligenza artificiale?</label>${radio('cs-livello',LIVELLI)}
+  <label>Quali usate?<small>Anche più di uno.</small></label>${checks('cs-strumenti',STRUMENTI)}
+  <label>Per che cosa li usate di più?<small>Una frase, per esempio «riassumo i verbali e preparo le email ai clienti».</small></label>
+  <textarea id="cs-usi"></textarea>
+  <label>Che cosa vorreste portarvi a casa da oggi?</label>
+  <textarea id="cs-obiettivo"></textarea>
+  <div class="actions"><button class="btn" id="invia-chisiete">Invia</button></div>`;
+}
+
+function barre(conteggi, totale){
+  const max = Math.max(1, ...conteggi.map(x=>x[1]));
+  return conteggi.map(([k,n])=>`<div class="bar"><span>${esc(k)}</span><span class="track"><span class="fill" style="width:${Math.round(n/max*100)}%; display:block;"></span></span><span class="num">${n}</span></div>`).join('');
+}
+
+function riepilogoChiSiete(){
+  const r = contributi.filter(c=>c.attivita==='chisiete');
+  // una sola risposta per persona: la più recente
+  const perNome = {}; r.forEach(c=>{ if(!perNome[c.autore]) perNome[c.autore]=c; });
+  const lista = Object.values(perNome);
+  if(!lista.length) return `<div class="riepilogo"><h2>Il riepilogo</h2><p class="hint">Le risposte compariranno qui appena arrivano.</p></div>`;
+  const liv = LIVELLI.map(l=>[l, lista.filter(c=>c.payload.livello===l).length]);
+  const str = STRUMENTI.map(s=>[s, lista.filter(c=>(c.payload.strumenti||[]).includes(s)).length]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+  const usi = lista.map(c=>c.payload.usi).filter(Boolean);
+  const obi = lista.map(c=>c.payload.obiettivo).filter(Boolean);
+  return `<div class="riepilogo">
+    <h2>Il riepilogo · ${lista.length} ${lista.length===1?'risposta':'risposte'}</h2>
+    <p class="hint">Si aggiorna da solo. I nomi non compaiono.</p>
+    <h3>Quanto li usate</h3>${barre(liv)}
+    <h3>Quali usate</h3>${str.length?barre(str):'<p class="hint">Nessuno strumento indicato.</p>'}
+    <h3>Per che cosa</h3><ul class="frasi">${usi.slice(0,30).map(t=>`<li>${esc(t)}</li>`).join('')||'<li>Nessuna risposta</li>'}</ul>
+    <h3>Che cosa vorreste portarvi a casa</h3><ul class="frasi">${obi.slice(0,30).map(t=>`<li>${esc(t)}</li>`).join('')||'<li>Nessuna risposta</li>'}</ul>
+  </div>`;
+}
+
+/* ---------- esito delle prove ---------- */
+function formEsito(){
+  const pr = PROVE[provaSel];
+  return `<h2>Com'è andata la prova</h2>
+  <p class="hint">Una scheda per ogni prova e per ogni strumento che avete usato.</p>
+  <label>Quale prova</label>
+  <div class="radio-row">${Object.entries(PROVE).map(([k,v])=>`<label class="opt ${provaSel===k?'checked':''}"><input type="radio" name="es-prova" value="${k}" ${provaSel===k?'checked':''}>${esc(v.nome)}</label>`).join('')}</div>
+  <label>Con quale strumento</label>${radio('es-strumento',STRUMENTI_PROVA)}
+  <label>${esc(pr.domanda)}</label>${radio('es-esito',pr.esiti)}
+  ${pr.extra?`<label>${esc(pr.extra)}</label>${radio('es-extra',['Sì','No'])}`:''}
+  <label>Che cosa vi ha sorpreso?<small>Facoltativo, una riga.</small></label>
+  <input type="text" id="es-nota" maxlength="200">
+  <div class="actions"><button class="btn" id="invia-esito">Invia l'esito</button></div>`;
+}
+
+function riepilogoEsiti(prova){
+  const pr = PROVE[prova];
+  const r = contributi.filter(c=>c.attivita==='esito' && c.payload.prova===prova);
+  const scelta = `<div class="radio-row" style="margin-bottom:10px">${Object.entries(PROVE).map(([k,v])=>`<button class="chip ${prova===k?'active':''}" data-vedi-prova="${k}">${esc(v.nome)}</button>`).join('')}</div>`;
+  if(!r.length) return `<div class="riepilogo">${scelta}<h2>${esc(pr.nome)}</h2><p class="hint">Ancora nessun esito per questa prova.</p></div>`;
+  const es = pr.esiti.map(e=>[e, r.filter(c=>c.payload.esito===e).length]);
+  const strUsati = STRUMENTI_PROVA.filter(s=>r.some(c=>c.payload.strumento===s));
+  const incrocio = `<div class="tabwrap"><table class="incrocio"><tr><th>Strumento</th>${pr.esiti.map(e=>`<th>${esc(e)}</th>`).join('')}</tr>
+    ${strUsati.map(s=>`<tr><td>${esc(s)}</td>${pr.esiti.map(e=>{const n=r.filter(c=>c.payload.strumento===s&&c.payload.esito===e).length; return `<td>${n||''}</td>`;}).join('')}</tr>`).join('')}</table></div>`;
+  const extra = pr.extra ? `<h3>${esc(pr.extra)}</h3>${barre(['Sì','No'].map(x=>[x, r.filter(c=>c.payload.extra===x).length]))}` : '';
+  const note = r.map(c=>c.payload.nota).filter(Boolean);
+  return `<div class="riepilogo">${scelta}
+    <h2>${esc(pr.nome)} · ${r.length} ${r.length===1?'esito':'esiti'}</h2>
+    <p class="hint">${esc(pr.domanda)}</p>
+    ${barre(es)}
+    <h3>Per strumento</h3>${incrocio}
+    ${extra}
+    <h3>Che cosa vi ha sorpreso</h3><ul class="frasi">${note.slice(0,30).map(t=>`<li>${esc(t)}</li>`).join('')||'<li>Ancora niente</li>'}</ul>
+  </div>`;
 }
 
 function formGriglia(){ return `
@@ -268,7 +425,7 @@ function formGriglia(){ return `
 
 function formBrief(){ return `
   <h2>Scrivi il tuo brief di delega</h2>
-  <p class="hint">La scaletta è quella vista nel secondo blocco. Scrivi come se stessi consegnando il lavoro a un collaboratore capace ma che non sa nulla del tuo contesto.</p>
+  <p class="hint">Scrivi come se stessi consegnando il lavoro a un collaboratore capace che non sa nulla del tuo contesto. Niente dati veri: nomi, cifre e clienti inventati.</p>
   <label>Titolo del compito</label>
   <input type="text" id="b-titolo" placeholder="Es. riordinare l'archivio preventivi e produrre un report">
   <label>Obiettivo<small>Cosa deve esistere alla fine che ora non esiste. Una frase precisa.</small></label>
@@ -279,7 +436,7 @@ function formBrief(){ return `
   <textarea id="b-vincoli"></textarea>
   <label>Criterio di successo<small>Come farai a dire "il lavoro è fatto bene" senza rileggere tutto.</small></label>
   <textarea id="b-criterio"></textarea>
-  <label>Strumento previsto</label>${radio('b-strumento',['Claude Code','Codex','Lovable','Non so ancora'])}
+  <label>Strumento previsto</label>${radio('b-strumento',['Il chatbot che uso già','Codex','Claude Code','Lovable','Non so ancora'])}
   <div class="actions">
     <button class="btn" id="invia-brief">Invia il brief</button>
     <button class="btn ghost" id="copia-brief">Copia come testo da incollare</button>
@@ -288,7 +445,7 @@ function formBrief(){ return `
 
 function formApp(){ return `
   <h2>Descrivi la tua applicazione</h2>
-  <p class="hint">Segui la scaletta del Modulo 3. Il testo che ne esce si incolla direttamente in Lovable sul piano gratuito.</p>
+  <p class="hint">Bastano poche righe per campo. Il testo che ne esce si può incollare in Lovable, anche con il piano gratuito.</p>
   <label>Nome dell'app</label>
   <input type="text" id="a-nome" placeholder="Es. registro visite clienti">
   <label>A chi serve</label>
@@ -338,9 +495,9 @@ function renderPassi(){
 
 /* ---------- bacheca ---------- */
 function viewBacheca(regia){
-  const chips = ['tutti',...Object.keys(ATT)].map(k=>
+  const chips = ['tutti',...IN_BACHECA].map(k=>
     `<button class="chip ${filtro===k?'active':''}" data-filtro="${k}">${k==='tutti'?'Tutti':ATT[k].nome}</button>`).join('');
-  let lista = contributi.filter(c=>filtro==='tutti'||c.attivita===filtro);
+  let lista = contributi.filter(c=>IN_BACHECA.includes(c.attivita) && (filtro==='tutti'||c.attivita===filtro));
   if(ordinamento==='voti') lista = [...lista].sort((a,b)=>b.voti-a.voti);
   const ordina = regia||true ? `<select id="ordina" style="width:auto; margin-left:auto;">
       <option value="recenti" ${ordinamento==='recenti'?'selected':''}>Più recenti</option>
@@ -435,14 +592,16 @@ function viewRegia(){
   }
   const n = a => contributi.filter(c=>c.attivita===a).length;
   const stats = `<div class="regia-top">
-    <div class="stat"><div class="n">${contributi.length}</div><div class="l">Contributi</div></div>
-    <div class="stat"><div class="n">${n('griglia')}</div><div class="l">Griglie</div></div>
-    <div class="stat"><div class="n">${n('brief')}</div><div class="l">Brief</div></div>
+    <div class="stat"><div class="n">${new Set(contributi.filter(c=>c.attivita==='chisiete').map(c=>c.autore)).size}</div><div class="l">Chi siete</div></div>
+    <div class="stat"><div class="n">${n('esito')}</div><div class="l">Esiti</div></div>
     <div class="stat"><div class="n">${n('app')}</div><div class="l">App</div></div>
-    <div class="stat"><div class="n">${n('canvas')}</div><div class="l">Canvas</div></div>
+    <div class="stat"><div class="n">${n('brief')}</div><div class="l">Brief</div></div>
     <div class="stat"><div class="n">${contributi.filter(c=>c.stato==='selezionato').length}</div><div class="l">Selezionati</div></div>
   </div>`;
-  return stats + viewBacheca(true);
+  const rt = [['bacheca','Bacheca'],['chisiete','Chi siete'],['esito','Esiti delle prove']].map(([k,l])=>
+    `<button class="tab ${regiaVista===k?'active':''}" data-regia-vista="${k}">${l}</button>`).join('');
+  const corpo = regiaVista==='chisiete' ? riepilogoChiSiete() : regiaVista==='esito' ? riepilogoEsiti(provaSel) : viewBacheca(true);
+  return stats + `<div class="tabs">${rt}</div>` + corpo;
 }
 
 /* ---------- eventi ---------- */
@@ -457,6 +616,30 @@ function bind(){
   const ni=$('#nome-input'); if(ni) ni.onkeydown=e=>{if(e.key==='Enter')$('#entra').click();};
 
   document.querySelectorAll('[data-tab]').forEach(el=>el.onclick=()=>{vista=el.dataset.tab; dettaglio=null; render(); if(vista==='canvas') renderPassi();});
+  on('#ingrandisci','onclick',()=>{document.body.classList.toggle('big'); render();});
+  document.querySelectorAll('[data-regia-vista]').forEach(el=>el.onclick=()=>{regiaVista=el.dataset.regiaVista; render();});
+  document.querySelectorAll('[data-vedi-prova]').forEach(el=>el.onclick=()=>{provaSel=el.dataset.vediProva; localStorage.setItem('aula_prova',provaSel); render();});
+  document.querySelectorAll('input[name="es-prova"]').forEach(el=>el.onchange=()=>{
+    const s=rad('es-strumento'); provaSel=el.value; localStorage.setItem('aula_prova',provaSel); render();
+    if(s){ const r=document.querySelector(`input[name="es-strumento"][value="${s}"]`); if(r){ r.checked=true; r.closest('label').classList.add('checked'); } }
+  });
+  // form: chi siete
+  on('#invia-chisiete','onclick',async()=>{
+    const p={livello:rad('cs-livello'), strumenti:[...document.querySelectorAll('input[name="cs-strumenti"]:checked')].map(x=>x.value), usi:val('#cs-usi'), obiettivo:val('#cs-obiettivo')};
+    if(!p.livello){ toast('Scegli almeno quanto li usi'); return; }
+    const {error} = await sb.from('contributi').insert({autore:nome, attivita:'chisiete', payload:p});
+    if(error){ toast('Errore di invio: '+error.message); return; }
+    localStorage.setItem('aula_chisiete_fatto','1'); toast('Grazie, risposte inviate'); render();
+  });
+  // form: esito
+  on('#invia-esito','onclick',async()=>{
+    const pr=PROVE[provaSel];
+    const p={prova:provaSel, strumento:rad('es-strumento'), esito:rad('es-esito'), extra:pr.extra?rad('es-extra'):'', nota:val('#es-nota')};
+    if(!p.strumento||!p.esito){ toast('Scegli lo strumento e che cosa ha fatto'); return; }
+    const {error} = await sb.from('contributi').insert({autore:nome, attivita:'esito', payload:p});
+    if(error){ toast('Errore di invio: '+error.message); return; }
+    toast('Esito inviato, grazie'); render();
+  });
   document.querySelectorAll('[data-filtro]').forEach(el=>el.onclick=()=>{filtro=el.dataset.filtro; render();});
   on('#ordina','onchange',()=>{ordinamento=$('#ordina').value; render();});
 
@@ -561,10 +744,10 @@ async function invia(attivita, payload, obbligatori){
   vista='bacheca'; filtro=attivita; render();
 }
 
-/* radio visual feedback */
+/* radio e checkbox visual feedback */
 document.addEventListener('change',e=>{
-  if(e.target.matches('.radio-row input')){
-    e.target.closest('.radio-row').querySelectorAll('label.opt').forEach(l=>l.classList.toggle('checked', l.querySelector('input').checked));
+  if(e.target.matches('.radio-row input, .check-row input')){
+    e.target.closest('.radio-row, .check-row').querySelectorAll('label.opt').forEach(l=>l.classList.toggle('checked', l.querySelector('input').checked));
   }
 });
 window.addEventListener('hashchange',()=>{isRegia=location.hash.startsWith('#regia'); dettaglio=null; render();});
