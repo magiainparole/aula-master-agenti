@@ -600,7 +600,8 @@ function viewRegia(){
     <div class="stat"><div class="n">${contributi.filter(c=>c.stato==='selezionato').length}</div><div class="l">Selezionati</div></div>
   </div>`;
   const rt = [['bacheca','Bacheca'],['chisiete','Chi siete'],['esito','Esiti delle prove']].map(([k,l])=>
-    `<button class="tab ${regiaVista===k?'active':''}" data-regia-vista="${k}">${l}</button>`).join('');
+    `<button class="tab ${regiaVista===k?'active':''}" data-regia-vista="${k}">${l}</button>`).join('')
+    + `<button class="tab" id="svuota-tutto" style="margin-left:auto;color:#b32424;" title="Cancella tutti i contributi, per esempio dopo una prova">Svuota tutto (${contributi.length})</button>`;
   const corpo = regiaVista==='chisiete' ? riepilogoChiSiete() : regiaVista==='esito' ? riepilogoEsiti(provaSel) : viewBacheca(true);
   return stats + `<div class="tabs">${rt}</div>` + corpo;
 }
@@ -619,6 +620,18 @@ function bind(){
   document.querySelectorAll('[data-tab]').forEach(el=>el.onclick=()=>{vista=el.dataset.tab; dettaglio=null; render(); if(vista==='canvas') renderPassi();});
   on('#ingrandisci','onclick',()=>{document.body.classList.toggle('big'); render();});
   document.querySelectorAll('[data-regia-vista]').forEach(el=>el.onclick=()=>{regiaVista=el.dataset.regiaVista; render();});
+  on('#svuota-tutto','onclick',async()=>{
+    const n=contributi.length;
+    if(!n){ toast('Non c\'è niente da cancellare'); return; }
+    if(!confirm(`Cancellare tutti i ${n} contributi? Serve dopo una prova o prima di una nuova lezione. Non si torna indietro.`)) return;
+    let ok=0, ko=0;
+    for(const c of [...contributi]){
+      const {error}=await sb.rpc('regia_elimina',{p_id:c.id,p_pass:regiaPass});
+      if(error) ko++; else ok++;
+    }
+    toast(`Cancellati ${ok} contributi` + (ko?`, ${ko} errori`:''));
+    carica();
+  });
   document.querySelectorAll('[data-vedi-prova]').forEach(el=>el.onclick=()=>{provaSel=el.dataset.vediProva; localStorage.setItem('aula_prova',provaSel); render();});
   document.querySelectorAll('input[name="es-prova"]').forEach(el=>el.onchange=()=>{
     const s=rad('es-strumento'); provaSel=el.value; localStorage.setItem('aula_prova',provaSel); render();
