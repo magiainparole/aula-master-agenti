@@ -190,7 +190,8 @@ const LIVELLI = ['Li uso poco o niente','Qualche volta al mese','Ogni settimana'
 const STRUMENTI = ['ChatGPT','Claude','Gemini','Copilot','Perplexity','Le Chat (Mistral)','DeepSeek','Strumenti per sviluppare (Cursor, Codex, Claude Code…)','Automazioni (n8n, Make, Zapier…)','Altro'];
 const STRUMENTI_PROVA = ['ChatGPT','Claude','Gemini','Copilot','Perplexity','Le Chat','Altro'];
 const PROVE = {
-  delegare:{nome:'Prova 1 · Delegare', domanda:'Che cosa ha fatto con la richiesta senza chi approva la spesa?',
+  delegare:{nome:'Prova 1 · Delegare', domanda:'Con la versione A, quella senza la riga finale: che cosa ha fatto davanti al dato mancante?',
+    domandaB:'E con la versione B, quella con la riga «fammi una sola domanda e fermati»?',
     esiti:['Ha chiesto chi approva e si è fermato','Ha chiesto, ma ha preparato comunque la proposta','Ha inventato chi approva','Ha preparato la proposta senza chiedere niente']},
   controllare:{nome:'Prova 2 · Controllare', domanda:'Quanti dei tre problemi della Gazzetta ha trovato?',
     esiti:['Tutti e tre','Due','Uno','Nessuno'], extra:'Ha inventato una fonte, una data o un numero?'},
@@ -271,7 +272,7 @@ function testoContributo(c){
     return `CHI SIETE — ${c.autore}\nLivello: ${p.livello}\nStrumenti: ${(p.strumenti||[]).join(', ')}\nPer che cosa: ${p.usi||'—'}\nDa portare a casa: ${p.obiettivo||'—'}`;
   }
   if(c.attivita==='esito'){
-    return `ESITO — ${(PROVE[p.prova]||{}).nome||p.prova}\n(di ${c.autore})\nStrumento: ${p.strumento}\nEsito: ${p.esito}${p.extra?'\nHa inventato qualcosa: '+p.extra:''}\nNota: ${p.nota||'—'}`;
+    return `ESITO — ${(PROVE[p.prova]||{}).nome||p.prova}\n(di ${c.autore})\nStrumento: ${p.strumento}\nEsito: ${p.esito}${p.esitoB?'\nCon la versione B: '+p.esitoB:''}${p.extra?'\nHa inventato qualcosa: '+p.extra:''}\nNota: ${p.nota||'—'}`;
   }
   return '';
 }
@@ -383,6 +384,7 @@ function formEsito(){
   <div class="radio-row">${Object.entries(PROVE).map(([k,v])=>`<label class="opt ${provaSel===k?'checked':''}"><input type="radio" name="es-prova" value="${k}" ${provaSel===k?'checked':''}>${esc(v.nome)}</label>`).join('')}</div>
   <label>Con quale strumento</label>${radio('es-strumento',STRUMENTI_PROVA)}
   <label>${esc(pr.domanda)}</label>${radio('es-esito',pr.esiti)}
+  ${pr.domandaB?`<label>${esc(pr.domandaB)}<small>Facoltativa.</small></label>${radio('es-esitob',pr.esiti.concat(['Non l\'ho provata']))}`:''}
   ${pr.extra?`<label>${esc(pr.extra)}</label>${radio('es-extra',['Sì','No'])}`:''}
   <label>Che cosa vi ha sorpreso?<small>Facoltativo, una riga.</small></label>
   <input type="text" id="es-nota" maxlength="200">
@@ -398,13 +400,16 @@ function riepilogoEsiti(prova){
   const strUsati = STRUMENTI_PROVA.filter(s=>r.some(c=>c.payload.strumento===s));
   const incrocio = `<div class="tabwrap"><table class="incrocio"><tr><th>Strumento</th>${pr.esiti.map(e=>`<th>${esc(e)}</th>`).join('')}</tr>
     ${strUsati.map(s=>`<tr><td>${esc(s)}</td>${pr.esiti.map(e=>{const n=r.filter(c=>c.payload.strumento===s&&c.payload.esito===e).length; return `<td>${n||''}</td>`;}).join('')}</tr>`).join('')}</table></div>`;
+  const rB = r.filter(c=>c.payload.esitoB && c.payload.esitoB!=='Non l\'ho provata');
+  const esB = pr.domandaB && rB.length ? `<h3>Con la versione B (${rB.length} ${rB.length===1?'esito':'esiti'})</h3>${barre(pr.esiti.map(e=>[e, rB.filter(c=>c.payload.esitoB===e).length]))}` : '';
   const extra = pr.extra ? `<h3>${esc(pr.extra)}</h3>${barre(['Sì','No'].map(x=>[x, r.filter(c=>c.payload.extra===x).length]))}` : '';
   const note = r.map(c=>c.payload.nota).filter(Boolean);
   return `<div class="riepilogo">${scelta}
     <h2>${esc(pr.nome)} · ${r.length} ${r.length===1?'esito':'esiti'}</h2>
     <p class="hint">${esc(pr.domanda)}</p>
     ${barre(es)}
-    <h3>Per strumento</h3>${incrocio}
+    ${esB}
+    <h3>Per strumento (versione A)</h3>${incrocio}
     ${extra}
     <h3>Che cosa vi ha sorpreso</h3><ul class="frasi">${note.slice(0,30).map(t=>`<li>${esc(t)}</li>`).join('')||'<li>Ancora niente</li>'}</ul>
   </div>`;
@@ -648,7 +653,7 @@ function bind(){
   // form: esito
   on('#invia-esito','onclick',async()=>{
     const pr=PROVE[provaSel];
-    const p={prova:provaSel, strumento:rad('es-strumento'), esito:rad('es-esito'), extra:pr.extra?rad('es-extra'):'', nota:val('#es-nota')};
+    const p={prova:provaSel, strumento:rad('es-strumento'), esito:rad('es-esito'), esitoB:pr.domandaB?rad('es-esitob'):'', extra:pr.extra?rad('es-extra'):'', nota:val('#es-nota')};
     if(!p.strumento||!p.esito){ toast('Scegli lo strumento e che cosa ha fatto'); return; }
     const {error} = await sb.from('contributi').insert({autore:nome, attivita:'esito', payload:p});
     if(error){ toast('Errore di invio: '+error.message); return; }
