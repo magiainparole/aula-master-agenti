@@ -179,12 +179,12 @@ const ATT = {
     intro:'L\'incarico che consegnereste a un agente per un vostro compito vero, raccontato con dati inventati. Se volete condividerlo con l\'aula, inviatelo da qui.'},
   griglia:{nome:'Griglia di delegabilità', modulo:'Modulo 1', badge:'b-griglia', nascosta:true,
     intro:'Scegli un compito ricorrente del tuo lavoro e passalo al setaccio: le risposte ti dicono se e quanto conviene delegarlo a un agente.'},
-  canvas:{nome:'Canvas del flusso', modulo:'Modulo 4', badge:'b-canvas', nascosta:true,
-    intro:'Prendi un processo del tuo lavoro e spezzalo in passaggi: per ciascuno indica se lo farebbe un agente, una persona, o un agente con approvazione umana.'}
+  canvas:{nome:'Canvas del flusso', modulo:'Il vostro processo', badge:'b-canvas',
+    intro:'In alternativa al brief: prendete un processo del vostro lavoro e spezzatelo in passaggi, indicando per ciascuno se lo farebbe un agente da solo, un agente che aspetta la vostra approvazione o una persona. Con dati inventati, come sempre.'}
 };
 const STATI = {nuovo:'Nuovo', selezionato:'Selezionato', in_esecuzione:'In esecuzione', eseguito:'Eseguito'};
 const VISIBILI = Object.keys(ATT).filter(k=>!ATT[k].nascosta);
-const IN_BACHECA = ['app','brief'];
+const IN_BACHECA = ['app','brief','canvas'];
 
 const LIVELLI = ['Li uso poco o niente','Qualche volta al mese','Ogni settimana','Ogni giorno','Ci costruisco automazioni o agenti'];
 const STRUMENTI = ['ChatGPT','Claude','Gemini','Copilot','Perplexity','Le Chat (Mistral)','DeepSeek','Strumenti per sviluppare (Cursor, Codex, Claude Code…)','Automazioni (n8n, Make, Zapier…)','Altro'];
@@ -602,6 +602,7 @@ function viewRegia(){
     <div class="stat"><div class="n">${n('esito')}</div><div class="l">Esiti</div></div>
     <div class="stat"><div class="n">${n('app')}</div><div class="l">App</div></div>
     <div class="stat"><div class="n">${n('brief')}</div><div class="l">Brief</div></div>
+    <div class="stat"><div class="n">${n('canvas')}</div><div class="l">Canvas</div></div>
     <div class="stat"><div class="n">${contributi.filter(c=>c.stato==='selezionato').length}</div><div class="l">Selezionati</div></div>
   </div>`;
   const rt = [['bacheca','Bacheca'],['chisiete','Chi siete'],['esito','Esiti delle prove']].map(([k,l])=>
